@@ -1,0 +1,26 @@
+{% extends 'layout.html' %}
+
+{% block title %}
+    Welcome to Blogger Login Page
+{% endblock %}
+
+{% block content %}
+
+    {% if current_user('blogger') %}
+        info1: {{ current_user('blogger').username }}<br/>
+            <a href="{{ url_for('user.secret') }}">Secret Page</a>
+            <br/>
+            <a href="{{ url_for('user.logout') }}">Logout Blogger</a>
+        {% else %}
+        info2: {{ current_user('blogger').username }}<br/>
+        <form method="post">
+            {{ form.hidden_tag() }}
+            {{ form.username }}
+            <br/>
+            {{ form.password }}
+            <br/>
+            {{ form.submit }}
+        </form>
+    {% endif %}
+
+{% endblock %}
