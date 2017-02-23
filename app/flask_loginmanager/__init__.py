@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import wraps
-from flask import request, abort, g
+from flask import request, abort, g, current_app
 import time
 from .user_mixin import UserMixin
 
@@ -57,7 +57,10 @@ class LoginManager(object):
                     info = [str(LoginManager.get_id(user)), str(g.start_time), LoginManager.__hash_generators.get(self.__role)(user)]
                     value = '-'.join(info)
 
-                    resp.set_cookie(key=self.__role, value=value, expires=g.start_time, httponly=True)
+                    httponly = current_app.config['SESSION_COOKIE_HTTPONLY']
+                    secure = current_app.config['SESSION_COOKIE_SECURE']
+
+                    resp.set_cookie(key=self.__role, value=value, expires=g.start_time, httponly=httponly, secure=secure)
 
             elif g.option == LoginManager.__CLEAR:
 
