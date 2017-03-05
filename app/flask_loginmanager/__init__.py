@@ -19,17 +19,25 @@ class LoginManager(object):
 
         if app is not None:
             app.context_processor(LoginManager.__user_context_processor)
-            app.after_request(LoginManager.__after_requset_funcs)
+            app.after_request(LoginManager.__after_request_funcs)
         self.__role = role
         self.__expires = expires
         self.__salt = salt
         self.__failure_handler = None
+        self.__permissions = tuple()
+
+    def __call__(self, *args):
+        for arg in args:
+            if not isinstance(arg, int):
+                raise ValueError('Should be integer value here.')
+        self.__permissions = args
+        return self
 
     def init_app(self, app):
         if app is None:
             raise ValueError('app must be set')
         app.context_processor(LoginManager.__user_context_processor)
-        app.after_request(LoginManager.__after_requset_funcs)
+        app.after_request(LoginManager.__after_request_funcs)
 
     # 通过密码校验后，调用这个方法载入用户信息
     def login(self, user):
@@ -136,6 +144,28 @@ class LoginManager(object):
 
     permissions_required = login_required
 
+    @staticmethod
+    def require(*managers):
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kw):
+                logined = False
+                for manager in managers:
+                    if not isinstance(manager, LoginManager):
+                        raise ValueError('Instance of `LoginManager` required.')
+
+                    if manager.has_permissions(*manager.__permissions):
+                        logined = True
+                        break
+
+                if logined:
+                    return func(*args, **kw)
+
+                abort(401)
+
+            return wrapper
+        return decorator
+
     def has_permissions(self, *permissions):
         user = self.current_user
         if user is not None:
@@ -157,8 +187,9 @@ class LoginManager(object):
     @staticmethod
     def __load_user_from_cookie(role):
 
-        if g.get('user'):
-            return g.user
+        if g.get(role):
+
+            return g[role]
 
         if LoginManager.__user_loader_dict.get(role) is None:
             raise NotImplementedError('user_loader must be set!')
@@ -181,7 +212,7 @@ class LoginManager(object):
                     if user is not None:
                         hash_server = LoginManager.__hash_generators.get(role)(user)
                         if hash_client == hash_server:
-                            g.user = user
+                            setattr(g, role, user)
                             return user
 
         return None
@@ -191,7 +222,7 @@ class LoginManager(object):
         return dict(current_user=LoginManager.__load_user_from_cookie)
 
     @staticmethod
-    def __after_requset_funcs(resp):
+    def __after_request_funcs(resp):
 
         for func in LoginManager.__after_request_func_list:
             func(resp)
@@ -203,5 +234,6 @@ class LoginManager(object):
 
 __all__ = [
     LoginManager.__name__,
+    LoginManager.require.__name__,
     UserMixin.__name__,
 ]
