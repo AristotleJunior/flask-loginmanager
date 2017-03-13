@@ -24,14 +24,6 @@ class LoginManager(object):
         self.__expires = expires
         self.__salt = salt
         self.__failure_handler = None
-        self.__permissions = tuple()
-
-    def __call__(self, *args):
-        for arg in args:
-            if not isinstance(arg, int):
-                raise ValueError('Should be integer value here.')
-        self.__permissions = args
-        return self
 
     def init_app(self, app):
         if app is None:
@@ -55,7 +47,7 @@ class LoginManager(object):
 
     def __set_cookie(self, resp):
 
-        if g.option is not None:
+        if hasattr(g, 'option'):
 
             if g.option == LoginManager.__SET:
 
@@ -145,20 +137,20 @@ class LoginManager(object):
     permissions_required = login_required
 
     @staticmethod
-    def require(*managers):
+    def role_required(*managers):
         def decorator(func):
             @wraps(func)
             def wrapper(*args, **kw):
-                logined = False
+                authorized = False
                 for manager in managers:
                     if not isinstance(manager, LoginManager):
                         raise ValueError('Instance of `LoginManager` required.')
 
-                    if manager.has_permissions(*manager.__permissions):
-                        logined = True
+                    if manager.current_user is not None:
+                        authorized = True
                         break
 
-                if logined:
+                if authorized:
                     return func(*args, **kw)
 
                 abort(401)
@@ -187,9 +179,10 @@ class LoginManager(object):
     @staticmethod
     def __load_user_from_cookie(role):
 
-        if g.get(role):
+        __CACHE_KEY_ROLE = 'cache_key_' + role
 
-            return g[role]
+        if hasattr(g, __CACHE_KEY_ROLE):
+            return getattr(g, __CACHE_KEY_ROLE)
 
         if LoginManager.__user_loader_dict.get(role) is None:
             raise NotImplementedError('user_loader must be set!')
@@ -212,7 +205,7 @@ class LoginManager(object):
                     if user is not None:
                         hash_server = LoginManager.__hash_generators.get(role)(user)
                         if hash_client == hash_server:
-                            setattr(g, role, user)
+                            setattr(g, __CACHE_KEY_ROLE, user)
                             return user
 
         return None
@@ -234,6 +227,6 @@ class LoginManager(object):
 
 __all__ = [
     LoginManager.__name__,
-    LoginManager.require.__name__,
+    LoginManager.role_required.__name__,
     UserMixin.__name__,
 ]
