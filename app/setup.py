@@ -4,7 +4,7 @@
 from setuptools import setup
 setup(
     name='Flask-LoginManager',
-    version='1.1.4',
+    version='1.1.6',
     keywords=('flask', 'login', 'multiple roles', 'permissions'),
     description='Flask-Loginmanager supports multiple roles and permissions for Flask, inspired by Flask-Login',
     license='MIT',

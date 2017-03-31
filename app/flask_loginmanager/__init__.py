@@ -15,11 +15,20 @@ class LoginManager(object):
     __after_request_func_list = []
     __hash_generators = {}
 
+    __instance_pool = dict()
+
     def __init__(self, app=None, role='default', expires=3600, salt=''):
 
         if app is not None:
             app.context_processor(LoginManager.__user_context_processor)
             app.after_request(LoginManager.__after_request_funcs)
+
+        if self not in LoginManager.__instance_pool:
+                if role in LoginManager.__instance_pool.values():
+                    raise ValueError("Duplicate role name.")
+
+        LoginManager.__instance_pool[self] = role
+
         self.__role = role
         self.__expires = expires
         self.__salt = salt
@@ -121,7 +130,6 @@ class LoginManager(object):
         def decorator(func):
             @wraps(func)
             def wrapper(*args, **kw):
-
                 if self.has_permissions(*permissions):
                     return func(*args, **kw)
 
@@ -133,8 +141,6 @@ class LoginManager(object):
             return wrapper
 
         return decorator
-
-    permissions_required = login_required
 
     @staticmethod
     def role_required(*managers):
@@ -160,6 +166,7 @@ class LoginManager(object):
 
     def has_permissions(self, *permissions):
         user = self.current_user
+
         if user is not None:
             for p in permissions:
                 if (user.get_permissions() & p) != p:
